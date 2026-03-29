@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMM Alert Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">RMM Alert Management</a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link" href="/">Home</a>
+            <a class="nav-link active" href="/dashboard">Dashboard</a>
+            <a class="nav-link" href="/report">Reports</a>
+            <a class="nav-link" href="/test-alert">Test Alert Fetch</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4 mb-4">
+    <h2 class="mb-4">Live RMM Alerts</h2>
+    <p class="text-muted">Latest 100 alerts. Mark as resolved when handled.</p>
+
+    <div class="card shadow-sm">
+        <div class="card-body table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Client</th>
+                        <th>Device</th>
+                        <th>Alert Type</th>
+                        <th>Category</th>
+                        <th>Time (UTC)</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alert in alerts %}
+                    <tr data-alertuid="{{ alert.alertuid }}">
+                        <td><strong>{{ alert.device.client_id if alert.device else '—' }}</strong></td>
+                        <td><code>{{ alert.device_hostname }}</code></td>
+                        <td>{{ alert.alert_type or '—' }}</td>
+                        <td>{{ alert.alert_category or '—' }}</td>
+                        <td>{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') if alert.timestamp else '—' }}</td>
+                        <td>
+                            {% if alert.status == 'Open' %}
+                                <span class="badge bg-danger">Open</span>
+                            {% else %}
+                                <span class="badge bg-success">Resolved</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if alert.status == 'Open' %}
+                            <button type="button" class="btn btn-outline-success btn-sm resolve-btn" data-alertuid="{{ alert.alertuid }}">Mark resolved</button>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if not alerts %}
+    <p class="text-muted mt-3">No alerts yet. Alerts will appear here when Datto RMM sends webhooks to <code>/webhook</code>.</p>
+    {% endif %}
+</div>
+
+<script>
+    document.querySelectorAll('.resolve-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const alertuid = this.dataset.alertuid;
+            const row = this.closest('tr');
+            fetch('/api/alerts/' + encodeURIComponent(alertuid) + '/status?status=Resolved', { method: 'PATCH' })
+                .then(r => r.ok ? r.json() : Promise.reject())
+                .then(() => {
+                    const statusCell = row.querySelector('td:nth-child(6)');
+                    const actionCell = row.querySelector('td:nth-child(7)');
+                    statusCell.innerHTML = '<span class="badge bg-success">Resolved</span>';
+                    actionCell.innerHTML = '—';
+                })
+                .catch(() => alert('Failed to update status.'));
+        });
+    });
+</script>
+</body>
+</html>

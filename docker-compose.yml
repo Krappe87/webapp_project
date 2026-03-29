@@ -1,0 +1,47 @@
+# Optional: omit the "caddy" service and its ports to run without HTTPS (e.g. local only).
+# For production: set DOMAIN and ACME_EMAIL in .env, ensure DNS A record points to this host.
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: rmmuser
+      POSTGRES_PASSWORD: rmmpassword
+      POSTGRES_DB: rmmdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"   # optional: remove in production so only Caddy is public
+    environment:
+      - DATABASE_URL=postgresql://rmmuser:rmmpassword@db:5432/rmmdb
+      - DATTO_API_URL=${DATTO_API_URL}
+      - DATTO_API_KEY=${DATTO_API_KEY}
+      - DATTO_API_SECRET=${DATTO_API_SECRET}
+    depends_on:
+      - db
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - ACME_EMAIL=${ACME_EMAIL:-}
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  caddy_data:

@@ -1,0 +1,7 @@
+# Reverse proxy for RMM Alert Management
+# Set DOMAIN and ACME_EMAIL in .env for production (Let's Encrypt).
+# For local only, use DOMAIN=localhost (HTTP only; no cert).
+
+{$DOMAIN} {
+    reverse_proxy web:8000
+}
