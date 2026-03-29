@@ -1,0 +1,50 @@
+# ==========================================
+# IDENTITY & STATUS
+# ==========================================
+name: "RMM Alert Ingestion Engine"
+description: "Listens for incoming webhooks from the RMM, normalizes the payload, and stores it for reporting."
+owner: "Dev Team Alpha"
+phase: "Active Development" # Options: Planning, Active Development, Testing, Deployed
+health: "Amber"             # Options: Green, Amber, Red
+
+# ==========================================
+# QUICK LINKS
+# ==========================================
+links:
+  repo: "https://github.com/your-org/rmm-ingestion"
+  live_url: "https://alerts.internal.yourdomain.com"
+  docs: "./README.md"
+
+# ==========================================
+# INFRASTRUCTURE & ROUTING
+# ==========================================
+infrastructure:
+  host: "Ubuntu-VM-02"
+  environment: "Dockerized" # or Bare Metal, VM, etc.
+  tech_stack: 
+    - "Python/Flask"
+    - "Gunicorn"
+    - "Nginx"
+
+endpoints:
+  - path: "POST /api/v1/alerts/receive"
+    purpose: "Primary webhook receiver for RMM payloads"
+  - path: "GET /api/v1/health"
+    purpose: "Uptime monitoring check"
+
+dependencies:
+  - "PostgreSQL-Main"       # The dashboard will look for another project/service with this name to link them
+
+# ==========================================
+# ACTIONABLES & MOMENTUM
+# ==========================================
+blockers:
+  - "Waiting on updated JSON payload schema from the upstream vendor to finalize parsing logic."
+
+todos:
+  - task: "Implement retry logic for database timeouts."
+    type: "feature"
+  - task: "Update the README.md with the new environment variables."
+    type: "quick-win"       # The dashboard can highlight this tag!
+  - task: "Write unit test for the webhook authentication function."
+    type: "testing"
