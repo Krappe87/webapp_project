@@ -1,9 +1,9 @@
 name: RMM Alert Ingestion Engine
 description: Listens for incoming webhooks from the RMM, normalizes the payload, and
-  stores it for reporting.
-owner: Dev Team Alpha
+  stores it for reporting. Generate alerts based on certain conditions in the ingested data.
+owner: Kevin
 phase: Active Development
-health: Amber
+health: Green
 links:
   repo: https://github.com/Krappe87/webapp_project
   live_url: https://rmm.kraplab.work
@@ -14,22 +14,29 @@ infrastructure:
   tech_stack:
   - Python/Flask
   - Gunicorn
-  - Nginx
+  - Caddy
+  - PostgreSQL
+  - Docker
+  - SQLAlchemy
 endpoints:
-- path: POST /api/v1/alerts/receive
+- path: POST /webhook
   purpose: Primary webhook receiver for RMM payloads
-- path: GET /api/v1/health
-  purpose: Uptime monitoring check
+- path: GET /dashboard
+  purpose: Simple dashboard to visualize ingested data (in development)
+- path: GET /report
+  purpose: Endpoint to trigger generation of a report based on stored data (in development)
 dependencies:
 - PostgreSQL Database
 blockers:
-- Waiting on updated JSON payload schema from the upstream vendor to finalize parsing
-  logic.
+- Learning how to implement secure webhook authentication mechanism (in progress)
+- DNS configuration with Caddy and DNS provider for HTTPS setup (in progress)
 todos:
-- task: Implement retry logic for database timeouts.
+- task: Secure the /webhook endpoint with HMAC authentication using a shared secret.
+  type: Security
+- task: Implement a simple dashboard to visualize ingested data using Flask templates.
   type: feature
-- task: Update the README.md with the new environment variables.
-  type: quick-win
+- task: Alert logic to trigger notifications based on certain conditions in the ingested data (e.g. critical alerts).
+  type: Main feature 
 - task: Write unit test for the webhook authentication function.
   type: testing
 tech_stack:

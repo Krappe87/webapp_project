@@ -1,2 +1,3 @@
 .env
 generate_manifest.py
+DEPLOYMENT.md
