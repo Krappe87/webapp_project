@@ -1,7 +1,11 @@
 # Reverse proxy for RMM Alert Management
 # Set DOMAIN and ACME_EMAIL in .env for production (Let's Encrypt).
 # For local only, use DOMAIN=localhost (HTTP only; no cert).
+{
+    email {$ACME_EMAIL}
+    acme_dns cloudflare {$CLOUDFLARE_API_TOKEN}
+}
 
-{$DOMAIN} {
+rmm.{$DOMAIN} {
     reverse_proxy web:8000
 }

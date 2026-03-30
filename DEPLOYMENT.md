@@ -16,8 +16,8 @@ In `.env` (or export before `docker compose up`):
 
 ```bash
 # Required for Let's Encrypt and webhook URL
-DOMAIN=rmm.yourdomain.com
-ACME_EMAIL=you@yourdomain.com   # used for Let's Encrypt expiry notices
+DOMAIN=kraplab.work
+ACME_EMAIL=kevinrappe87@gmail.com   # used for Let's Encrypt expiry notices
 ```
 
 Keep your existing `DATABASE_URL`, `DATTO_*` variables as needed.
@@ -37,7 +37,7 @@ Caddy will:
 
 Your webhook URL will be:
 
-- **https://rmm.yourdomain.com/webhook**
+- **https://rmm.kraplab.work/webhook**
 
 Use this URL in Datto RMM when configuring the webhook.
 

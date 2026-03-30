@@ -20,7 +20,7 @@ services:
     ports:
       - "8000:8000"   # optional: remove in production so only Caddy is public
     environment:
-      - DATABASE_URL=postgresql://rmmuser:rmmpassword@db:5432/rmmdb
+      - DATABASE_URL=${DATABASE_URL}
       - DATTO_API_URL=${DATTO_API_URL}
       - DATTO_API_KEY=${DATTO_API_KEY}
       - DATTO_API_SECRET=${DATTO_API_SECRET}
