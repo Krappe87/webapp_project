@@ -1,7 +1,9 @@
 import os
 import re
+import hmac
+import hashlib
 from datetime import datetime, timedelta
-from fastapi import FastAPI, BackgroundTasks, Request, Depends, Query
+from fastapi import FastAPI, BackgroundTasks, Request, Depends, Query, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -64,6 +66,7 @@ def get_db():
 DATTO_API_URL = os.getenv("DATTO_API_URL", "https://concord-api.centrastage.net")
 API_KEY = os.getenv("DATTO_API_KEY", "")
 API_SECRET = os.getenv("DATTO_API_SECRET", "")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 
 # --- HELPER FUNCTIONS ---
 def extract_client_id(hostname: str):
@@ -163,7 +166,25 @@ class RMMWebhookPayload(BaseModel):
     alertuid: str
 
 @app.post("/webhook")
-async def receive_rmm_alert(payload: RMMWebhookPayload, background_tasks: BackgroundTasks):
+async def receive_rmm_alert(request: Request, payload: RMMWebhookPayload, background_tasks: BackgroundTasks):
+    
+    # --- CUSTOM HEADER AUTHENTICATION ---
+    if WEBHOOK_SECRET:
+        # 1. Grab your custom header
+        incoming_secret = request.headers.get("X-Webhook-Secret")
+        
+        if not incoming_secret:
+            raise HTTPException(status_code=401, detail="Missing authentication header")
+            
+        # 2. Safely compare the incoming string to your .env secret
+        # Using compare_digest prevents malicious actors from guessing the 
+        # secret by measuring how many milliseconds the server takes to reject it
+        if not secrets.compare_digest(incoming_secret, WEBHOOK_SECRET):
+            print("WARNING: Webhook rejected due to invalid secret token.")
+            raise HTTPException(status_code=401, detail="Invalid webhook secret")
+    # ------------------------------------
+
+    # If the secret matches (or if no secret is set), process the alert normally
     background_tasks.add_task(
         process_alert_background, 
         payload.alertuid, 
