@@ -1,3 +1,5 @@
 .env
 generate_manifest.py
 DEPLOYMENT.md
+db_data/
+project.yml

@@ -2,6 +2,7 @@ import os
 import re
 import hmac
 import hashlib
+import secrets
 from datetime import datetime, timedelta
 from fastapi import FastAPI, BackgroundTasks, Request, Depends, Query, HTTPException
 from fastapi.templating import Jinja2Templates
@@ -51,8 +52,12 @@ class Alert(Base):
 Base.metadata.create_all(bind=engine)
 
 # --- FASTAPI SETUP ---
+# Calculate the exact folder where main.py lives
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(CURRENT_DIR, "templates")
+
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 # Dependency to get the database session
 def get_db():
@@ -196,7 +201,10 @@ async def receive_rmm_alert(request: Request, payload: RMMWebhookPayload, backgr
 
 @app.get("/")
 async def read_root():
-    with open("templates/index.html", "r") as f:
+    # Use the dynamic directory to find index.html
+    index_path = os.path.join(TEMPLATES_DIR, "index.html")
+    
+    with open(index_path, "r") as f:
         content = f.read()
     return HTMLResponse(content=content)
 
