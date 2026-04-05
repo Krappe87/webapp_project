@@ -1,54 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Alert Fetch | RMM Alerts</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<nav class="navbar navbar-dark bg-dark">
-    <div class="container">
-        <a class="navbar-brand" href="/">RMM Alert Management</a>
-        <div class="navbar-nav ms-auto">
-            <a class="nav-link" href="/">Home</a>
-            <a class="nav-link" href="/dashboard">Dashboard</a>
-            <a class="nav-link" href="/report">Reports</a>
-            <a class="nav-link active" href="/test-alert">Test Alert Fetch</a>
-        </div>
-    </div>
-</nav>
+{% extends "base.html" %}
 
-<div class="container mt-4">
-    <h2>Test Alert Fetch</h2>
-    <p class="text-muted">Fetch an alert from the Datto API by UID and see the shaped response (same format as ingest/API). Nothing is saved to the database.</p>
+{% block content %}
+<h2 class="page-header">Test Alert Fetch</h2>
+<p class="text-muted">Fetch an alert from the Datto API by UID and see the shaped response. Nothing is saved to the database.</p>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <form id="fetchForm" class="row g-3 align-items-end">
-                <div class="col-md-8">
-                    <label for="alertuid" class="form-label">Alert UID</label>
-                    <input type="text" id="alertuid" name="alertuid" class="form-control" placeholder="e.g. abc123-def456-..." required>
-                </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary">Fetch and shape</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="loading" class="d-none">Fetching from Datto API…</div>
-    <div id="error" class="alert alert-danger d-none" role="alert"></div>
-    <div id="resultSection" class="d-none">
-        <h5>Shaped response (as would be stored / returned by API)</h5>
-        <pre id="shapedOutput" class="bg-dark text-light p-3 rounded overflow-auto" style="max-height: 24rem;"></pre>
-        <details class="mt-3">
-            <summary class="text-muted">Raw response from Datto (optional)</summary>
-            <pre id="rawOutput" class="bg-secondary text-light p-3 rounded overflow-auto mt-2" style="max-height: 16rem;"></pre>
-        </details>
+<div class="card custom-card mb-4">
+    <div class="card-body">
+        <form id="fetchForm" class="row g-3 align-items-end">
+            <div class="col-md-8">
+                <label for="alertuid" class="form-label">Alert UID</label>
+                <input type="text" id="alertuid" name="alertuid" class="form-control" placeholder="e.g. abc123-def456-..." required>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-brand-primary w-100">Fetch and shape</button>
+            </div>
+        </form>
     </div>
 </div>
 
+<div id="loading" class="d-none text-muted fw-bold">Fetching from Datto API…</div>
+<div id="error" class="alert alert-danger d-none" role="alert"></div>
+
+<div id="resultSection" class="d-none">
+    <h5 style="color: var(--brand-secondary); font-weight: 700;">Shaped response</h5>
+    <pre id="shapedOutput" class="bg-dark text-light p-3 rounded overflow-auto" style="max-height: 24rem;"></pre>
+    <details class="mt-3">
+        <summary class="text-muted fw-bold" style="cursor: pointer;">Raw response from Datto</summary>
+        <pre id="rawOutput" class="bg-secondary text-light p-3 rounded overflow-auto mt-2" style="max-height: 16rem;"></pre>
+    </details>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
     document.getElementById('fetchForm').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -59,27 +42,22 @@
         const shapedOutput = document.getElementById('shapedOutput');
         const rawOutput = document.getElementById('rawOutput');
 
-        errorEl.classList.add('d-none');
-        resultSection.classList.add('d-none');
-        loading.classList.remove('d-none');
+        errorEl.classList.add('d-none'); resultSection.classList.add('d-none'); loading.classList.remove('d-none');
 
         try {
             const res = await fetch('/api/test-fetch-alert', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ alertuid })
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alertuid })
             });
             const data = await res.json();
             loading.classList.add('d-none');
 
             if (!res.ok) {
                 errorEl.textContent = data.detail || data.message || 'Request failed';
-                errorEl.classList.remove('d-none');
-                return;
+                errorEl.classList.remove('d-none'); return;
             }
 
             shapedOutput.textContent = JSON.stringify(data.shaped, null, 2);
-            rawOutput.textContent = data.raw_from_datto != null ? JSON.stringify(data.raw_from_datto, null, 2) : '(empty – check Datto API credentials or UID)';
+            rawOutput.textContent = data.raw_from_datto != null ? JSON.stringify(data.raw_from_datto, null, 2) : '(empty)';
             resultSection.classList.remove('d-none');
         } catch (err) {
             loading.classList.add('d-none');
@@ -88,5 +66,4 @@
         }
     });
 </script>
-</body>
-</html>
+{% endblock %}

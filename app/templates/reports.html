@@ -1,91 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Report Generator | RMM Alerts</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .report-table { overflow-x: auto; margin-top: 1rem; }
-        .report-table table { font-size: 0.9rem; }
-    </style>
-</head>
-<body class="bg-light">
-<div class="container mt-4 mb-4">
-    <h2 class="mb-4">Generate Alerts Report</h2>
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <form id="reportForm">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="client" class="form-label">Client</label>
-                        <select id="client" name="client" class="form-select" required>
-                            <option value="">-- Select client --</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="server" class="form-label">Server (optional)</label>
-                        <select id="server" name="server" class="form-select">
-                            <option value="">-- All servers --</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="startDate" class="form-label">Start Date</label>
-                        <input type="date" id="startDate" name="startDate" class="form-control" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="endDate" class="form-label">End Date</label>
-                        <input type="date" id="endDate" name="endDate" class="form-control" required>
-                    </div>
-                    <div class="col-12">
-                        <button type="submit" class="btn btn-primary">Generate Report</button>
-                        <a href="/dashboard" class="btn btn-outline-secondary ms-2">Back to Dashboard</a>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+{% extends "base.html" %}
 
-    <div id="reportSection" class="d-none">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">Report results</h5>
-            <button type="button" id="downloadCsv" class="btn btn-success btn-sm">Download CSV</button>
-        </div>
-        <div id="reportContainer"></div>
+{% block extra_css %}
+<style>
+    .report-table { overflow-x: auto; margin-top: 1rem; }
+    .report-table table { font-size: 0.9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 class="page-header">Generate Alerts Report</h2>
+<div class="card custom-card mb-4">
+    <div class="card-body">
+        <form id="reportForm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="client" class="form-label">Client</label>
+                    <select id="client" name="client" class="form-select" required>
+                        <option value="">-- Select client --</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="server" class="form-label">Server (optional)</label>
+                    <select id="server" name="server" class="form-select">
+                        <option value="">-- All servers --</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="date" id="startDate" name="startDate" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="date" id="endDate" name="endDate" class="form-control" required>
+                </div>
+                <div class="col-12 mt-4">
+                    <button type="submit" class="btn btn-brand-primary">Generate Report</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
+<div id="reportSection" class="d-none mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0" style="color: var(--brand-secondary); font-weight: 700;">Report results</h5>
+        <button type="button" id="downloadCsv" class="btn btn-success btn-sm">Download CSV</button>
+    </div>
+    <div class="card custom-card">
+        <div class="card-body" id="reportContainer"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
     const clientSelect = document.getElementById('client');
     const serverSelect = document.getElementById('server');
 
-    // Load clients for dropdown
-    fetch('/api/clients')
-        .then(r => r.json())
-        .then(clients => {
-            clients.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.name || c.id;
-                clientSelect.appendChild(opt);
-            });
+    fetch('/api/clients').then(r => r.json()).then(clients => {
+        clients.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id; opt.textContent = c.name || c.id;
+            clientSelect.appendChild(opt);
         });
+    });
 
-    // When client changes, load devices for that client
     clientSelect.addEventListener('change', () => {
         serverSelect.innerHTML = '<option value="">-- All servers --</option>';
         const clientId = clientSelect.value;
         if (!clientId) return;
-        fetch('/api/devices?client_id=' + encodeURIComponent(clientId))
-            .then(r => r.json())
-            .then(devices => {
-                devices.forEach(d => {
-                    const opt = document.createElement('option');
-                    opt.value = d.hostname;
-                    opt.textContent = d.hostname;
-                    serverSelect.appendChild(opt);
-                });
+        fetch('/api/devices?client_id=' + encodeURIComponent(clientId)).then(r => r.json()).then(devices => {
+            devices.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.hostname; opt.textContent = d.hostname;
+                serverSelect.appendChild(opt);
             });
+        });
     });
 
     document.getElementById('reportForm').addEventListener('submit', function(event) {
@@ -97,30 +87,20 @@
             endDate: document.getElementById('endDate').value
         };
         fetch('/generate-report', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(data => {
+            method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' }
+        }).then(response => response.json()).then(data => {
             if (data.success) {
                 document.getElementById('reportContainer').innerHTML = data.htmlReport;
                 document.getElementById('reportSection').classList.remove('d-none');
                 document.getElementById('downloadCsv').onclick = () => {
-                    const params = new URLSearchParams({
-                        client: payload.client,
-                        startDate: payload.startDate,
-                        endDate: payload.endDate
-                    });
+                    const params = new URLSearchParams({ client: payload.client, startDate: payload.startDate, endDate: payload.endDate });
                     if (payload.server) params.set('server', payload.server);
                     window.open('/report/csv?' + params.toString(), '_blank');
                 };
             } else {
                 alert('Error: ' + (data.message || 'Could not generate report.'));
             }
-        })
-        .catch(() => alert('Network error. Please try again.'));
+        }).catch(() => alert('Network error. Please try again.'));
     });
 </script>
-</body>
-</html>
+{% endblock %}

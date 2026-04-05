@@ -1,30 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resource Alert Management</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            text-align: center;
-        }
-        a {
-            display: block;
-            margin: 10px 0;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-        }
-    </style>
-</head>
-<body>
-    <h1>Resource Alert Management</h1>
-    <a href="/dashboard">Go to Dashboard</a>
-    <a href="/report">Generate Report</a>
-    <a href="/test-alert">Test Alert Fetch</a>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .stat-bubble {
+        background: white; border-radius: 12px; padding: 1.5rem; text-align: center;
+        border-top: 4px solid var(--brand-secondary); box-shadow: 0 4px 12px rgba(0,0,0,0.05); height: 100%;
+    }
+    .stat-bubble h2 { color: var(--brand-primary); font-weight: 700; margin-bottom: 0.5rem; font-size: 2.2rem; }
+    .stat-bubble .stat-label { color: var(--text-steel); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .clickable-bubble { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .clickable-bubble:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(1, 43, 127, 0.15); cursor: pointer; }
+    a.bubble-link { text-decoration: none; color: inherit; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12"><h2 class="page-header">Dashboard Overview</h2></div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card custom-card">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4">
+                <h5 class="mb-0 fw-bold" style="color: var(--brand-secondary);">Recent Alerts Preview</h5>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.95rem;">
+                        <thead>
+                            <tr class="text-muted" style="border-bottom: 2px solid #eee;">
+                                <th>Client</th><th>Device</th><th>Alert Type</th><th>Time (UTC)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in recent_alerts %}
+                            <tr>
+                                <td><strong>{{ alert.device.client_id if alert.device else '—' }}</strong></td>
+                                <td style="color: var(--text-steel);">{{ alert.device_hostname }}</td>
+                                <td>{{ alert.alert_type or '—' }}</td>
+                                <td class="text-muted">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') if alert.timestamp else '—' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted py-4">No recent alerts found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 text-start">
+                    <a href="/alerts" class="btn btn-brand-primary px-4 shadow-sm">View All Alerts</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-2">
+    <div class="col-12 mb-3"><h5 class="fw-bold" style="color: var(--brand-secondary);">Live Highlights</h5></div>
+    
+    <div class="col-md-6 col-lg-3 mb-3">
+        <a href="/alerts?timeframe=1h" class="bubble-link">
+            <div class="stat-bubble clickable-bubble">
+                <h2>{{ stats.last_hour }}</h2><div class="stat-label">Alerts (Last Hour)</div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-3">
+        <a href="/alerts?timeframe=24h" class="bubble-link">
+            <div class="stat-bubble clickable-bubble">
+                <h2>{{ stats.last_24h }}</h2><div class="stat-label">Alerts (24 Hours)</div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-3">
+        <a href="{% if stats.trend_param %}/alerts?trend={{ stats.trend_param }}{% else %}#{% endif %}" class="bubble-link">
+            <div class="stat-bubble {% if stats.trend_param %}clickable-bubble{% endif %}">
+                <h2 style="font-size: 1.8rem; padding-top: 0.4rem; margin-bottom: 0.9rem;">{{ stats.trend }}</h2>
+                <div class="stat-label">24Hr Trend</div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-3">
+        <a href="{% if stats.top_client != 'None' %}/alerts?client={{ stats.top_client }}{% else %}#{% endif %}" class="bubble-link">
+            <div class="stat-bubble {% if stats.top_client != 'None' %}clickable-bubble{% endif %}">
+                <h2 style="font-size: 1.8rem; padding-top: 0.4rem; margin-bottom: 0.9rem;">{{ stats.top_client }}</h2>
+                <div class="stat-label">Top Client Today</div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

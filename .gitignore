@@ -3,3 +3,4 @@ generate_manifest.py
 DEPLOYMENT.md
 db_data/
 project.yml
+seed_database.py
