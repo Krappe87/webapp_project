@@ -93,3 +93,9 @@ async def report_page(request: Request):
 @router.get("/test-alert")
 async def test_alert_page(request: Request):
     return templates.TemplateResponse("test-alert.html", {"request": request})
+
+
+@router.get("/datto-sync", response_class=HTMLResponse)
+def datto_sync_viewport(request: Request):
+    """Live listing/ingest metrics while Datto sync runs (polls /api/datto/sync-progress)."""
+    return templates.TemplateResponse("sync-viewport.html", {"request": request})

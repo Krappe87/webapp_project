@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<style>
+    .metric-tile { background: #fff; border-radius: 10px; padding: 1rem 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); height: 100%; }
+    .metric-tile h6 { color: var(--text-steel); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem; }
+    .metric-tile .val { font-size: 1.75rem; font-weight: 700; color: var(--brand-secondary); }
+    #ingestChart { width: 100%; height: 220px; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .mono { font-family: ui-monospace, monospace; font-size: 0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-header">Datto sync viewport</h1>
+<p class="text-muted mb-4">Polls <span class="mono">/api/datto/sync-progress</span> every 1.5s. Start a sync with <span class="mono">POST /api/datto/sync-alerts</span> (background) then watch live counters here.</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="metric-tile">
+            <h6>Job running</h6>
+            <div class="val" id="m-running">—</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-tile">
+            <h6>Phase</h6>
+            <div class="val" style="font-size:1.1rem" id="m-phase">—</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-tile">
+            <h6>Elapsed (this run)</h6>
+            <div class="val" id="m-elapsed">—</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-tile">
+            <h6>UIDs processed / queued</h6>
+            <div class="val" style="font-size:1.25rem" id="m-uids">—</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="metric-tile">
+            <h6>Ingested (live)</h6>
+            <div class="val" style="color: var(--brand-primary)" id="m-ingested">0</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-tile">
+            <h6>List pages (resolved / open)</h6>
+            <div class="val" style="font-size:1.1rem" id="m-pages">—</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-tile">
+            <h6>List rows (resolved / open)</h6>
+            <div class="val" style="font-size:1.05rem" id="m-rows">—</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-tile">
+            <h6>Truncated by max pages?</h6>
+            <div class="val" style="font-size:0.95rem" id="m-trunc">—</div>
+        </div>
+    </div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label text-muted small">Ingested cumulative (this browser session)</label>
+    <canvas id="ingestChart" width="900" height="220" aria-label="Ingested count over time"></canvas>
+</div>
+
+<div class="custom-card p-4 mb-3">
+    <h5 class="mb-3" style="color: var(--brand-secondary)">Last completed run</h5>
+    <pre class="mono small mb-0" id="last-run" style="max-height: 280px; overflow: auto; white-space: pre-wrap;">—</pre>
+</div>
+
+<div class="custom-card p-4">
+    <h5 class="mb-3" style="color: var(--brand-secondary)">Last sync API result</h5>
+    <pre class="mono small mb-0" id="last-result" style="max-height: 320px; overflow: auto; white-space: pre-wrap;">—</pre>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const chartCanvas = document.getElementById('ingestChart');
+    const ctx = chartCanvas.getContext('2d');
+    const history = [];
+    const maxPoints = 120;
+
+    function drawChart() {
+        const w = chartCanvas.width, h = chartCanvas.height;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#f8f9fa';
+        ctx.fillRect(0, 0, w, h);
+        if (history.length < 2) {
+            ctx.fillStyle = '#6c757d';
+            ctx.font = '14px sans-serif';
+            ctx.fillText('Waiting for samples…', 16, h / 2);
+            return;
+        }
+        const vals = history.map(p => p.y);
+        const minY = Math.min(...vals);
+        const maxY = Math.max(...vals, minY + 1);
+        const pad = 24;
+        ctx.strokeStyle = '#dee2e6';
+        ctx.beginPath();
+        ctx.moveTo(pad, pad);
+        ctx.lineTo(pad, h - pad);
+        ctx.lineTo(w - pad, h - pad);
+        ctx.stroke();
+        ctx.strokeStyle = '#ed7422';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        history.forEach((p, i) => {
+            const x = pad + (i / (history.length - 1)) * (w - 2 * pad);
+            const y = h - pad - ((p.y - minY) / (maxY - minY)) * (h - 2 * pad);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.fillStyle = '#012B7F';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(String(maxY), 4, pad + 4);
+        ctx.fillText(String(minY), 4, h - pad);
+    }
+
+    async function tick() {
+        try {
+            const r = await fetch('/api/datto/sync-progress', { headers: { 'Accept': 'application/json' } });
+            const data = await r.json();
+            const live = data.live || {};
+            const ing = live.ingest || {};
+            const list = live.listing || {};
+
+            document.getElementById('m-running').textContent = data.sync_running ? 'Yes' : 'No';
+            document.getElementById('m-phase').textContent = live.phase || '—';
+            const started = live.run_started_at_epoch;
+            if (data.sync_running && started) {
+                const sec = Math.floor(Date.now() / 1000 - started);
+                const m = Math.floor(sec / 60), s = sec % 60;
+                document.getElementById('m-elapsed').textContent = m + 'm ' + s + 's';
+            } else {
+                document.getElementById('m-elapsed').textContent = '—';
+            }
+            const q = ing.uids_queued || 0, d = ing.uids_done || 0;
+            document.getElementById('m-uids').textContent = d + ' / ' + q;
+            document.getElementById('m-ingested').textContent = String(ing.ingested ?? 0);
+            document.getElementById('m-pages').textContent =
+                (list.resolved_pages || 0) + ' / ' + (list.open_pages || 0);
+            document.getElementById('m-rows').textContent =
+                (list.resolved_rows || 0) + ' / ' + (list.open_rows || 0);
+            document.getElementById('m-trunc').textContent = [
+                list.resolved_truncated ? 'resolved' : null,
+                list.open_truncated ? 'open' : null,
+            ].filter(Boolean).join(', ') || 'none';
+
+            const t = Date.now() / 1000;
+            history.push({ t, y: ing.ingested || 0 });
+            while (history.length > maxPoints) history.shift();
+            drawChart();
+
+            const last = live.last_completed_run;
+            document.getElementById('last-run').textContent =
+                last ? JSON.stringify(last, null, 2) : '—';
+            document.getElementById('last-result').textContent =
+                data.last_result ? JSON.stringify(data.last_result, null, 2) : '—';
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    tick();
+    setInterval(tick, 1500);
+})();
+</script>
+{% endblock %}

@@ -4,3 +4,5 @@ DEPLOYMENT.md
 db_data/
 project.yml
 seed_database.py
+.cursorignore
+__pycache__/
