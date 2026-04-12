@@ -69,6 +69,7 @@ def begin_run(*, total_sites: int, max_pages: int | None, concurrency: int) -> N
             "skipped_filter": 0,
             "skipped_before_cutoff": 0,
             "skipped_missing_timestamp": 0,
+            "skipped_file_server": 0,
             "errors": 0,
             "current_uid": None,
         }
@@ -131,6 +132,8 @@ def tick_ingest_done(status: str, detail: str | None) -> None:
                 ing["skipped_before_cutoff"] += 1
             elif detail == "missing_alert_timestamp":
                 ing["skipped_missing_timestamp"] += 1
+            elif detail == "skipped_file_server_hostname":
+                ing["skipped_file_server"] += 1
             else:
                 ing["skipped_existing"] += 1
         else:

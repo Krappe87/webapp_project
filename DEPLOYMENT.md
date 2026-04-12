@@ -39,6 +39,8 @@ DATTO_SITE_UIDS=site-uid-one,site-uid-two
 
 Keep your existing `DATABASE_URL`, `DATTO_API_*` variables as needed.
 
+`docker-compose.yml` passes **`DATTO_ALERT_LIST_MAX_PAGES`** and **`DATTO_INGEST_CONCURRENCY`** into the `web` service (with the same defaults as the app). Set them in `.env` to override; `docker compose up` will apply them on the next recreate.
+
 ## 3. Scheduling alert ingestion (how the app “starts” requesting data)
 
 Ingestion does **not** run in the background by itself. Something on your network must **call the sync URL on a schedule** (every few minutes is typical).
@@ -123,6 +125,16 @@ If you prefer systemd over cron, use a `.service` that runs the same `curl` (or 
 ```bash
 docker compose up -d --build
 ```
+
+### Database: `alerts.citrix_host` (existing PostgreSQL)
+
+If the database was created before this column existed, add it once (safe to re-run):
+
+```sql
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS citrix_host BOOLEAN NOT NULL DEFAULT false;
+```
+
+New environments that run `Base.metadata.create_all` on boot get the column from the model.
 
 Caddy will:
 

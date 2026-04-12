@@ -26,6 +26,10 @@ services:
       - DATTO_API_SECRET=${DATTO_API_SECRET}
       - DATTO_SITE_UIDS=${DATTO_SITE_UIDS}
       - DATTO_MAX_REQUESTS_PER_MINUTE=${DATTO_MAX_REQUESTS_PER_MINUTE:-550}
+      # List pagination cap per site/state (sync + alerts-preview). 0 = unlimited. Omit from .env to use default 40.
+      - DATTO_ALERT_LIST_MAX_PAGES=${DATTO_ALERT_LIST_MAX_PAGES:-40}
+      # Parallel detail+ingest workers (each uses its own DB session). Omit from .env to use default 1.
+      - DATTO_INGEST_CONCURRENCY=${DATTO_INGEST_CONCURRENCY:-1}
       - ALERT_INGEST_SINCE=${ALERT_INGEST_SINCE:-2026-01-01}
     depends_on:
       - db

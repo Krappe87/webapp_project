@@ -23,6 +23,11 @@ from app.services.datto import (
 )
 from app.services.rules import run_rule_engine
 from app.services.utils import extract_client_id
+from app.services.host_classification import (
+    hostname_from_list_item,
+    is_file_backup_server_hostname,
+    is_citrix_hostname,
+)
 from app.services import sync_progress
 from app.services.ingest_cutoff import (
     get_ingest_cutoff_et_naive,
@@ -66,6 +71,10 @@ async def ingest_single_alert_from_datto(
     if existing:
         return "skipped", None
 
+    hn_pre = hostname_from_list_item(list_item)
+    if hn_pre and is_file_backup_server_hostname(hn_pre):
+        return "skipped", "skipped_file_server_hostname"
+
     raw = await fetch_datto_diagnostics(alertuid)
     if not raw:
         return "error", "detail_fetch_failed"
@@ -83,6 +92,9 @@ async def ingest_single_alert_from_datto(
     if not hostname:
         return "error", "no_device_hostname"
 
+    if is_file_backup_server_hostname(hostname):
+        return "skipped", "skipped_file_server_hostname"
+
     client_id = extract_client_id(hostname)
     diagnostic_data = reduce_datto_payload_for_storage(raw, list_item)
     alert_type = diagnostic_data.get("alert_type") or ""
@@ -91,6 +103,7 @@ async def ingest_single_alert_from_datto(
     if resolved is None and list_item is not None:
         resolved = list_item.get("resolved")
     status = "Resolved" if resolved else "Open"
+    citrix_host = is_citrix_hostname(hostname)
 
     _ensure_client_device(db, hostname, client_id)
     db.flush()
@@ -101,6 +114,7 @@ async def ingest_single_alert_from_datto(
         alert_type=alert_type,
         alert_category=alert_category,
         diagnostic_data=diagnostic_data,
+        citrix_host=citrix_host,
         status=status,
         timestamp=alert_ts,
     )
@@ -125,6 +139,13 @@ async def explain_datto_alert_ingest(db: Session, alertuid: str, list_item: dict
     if existing:
         out["outcome"] = "skipped"
         out["detail"] = "already_in_db"
+        return out
+
+    hn_list = hostname_from_list_item(list_item)
+    if hn_list and is_file_backup_server_hostname(hn_list):
+        out["outcome"] = "skipped"
+        out["detail"] = "skipped_file_server_hostname"
+        out["hostname_from_list"] = hn_list
         return out
 
     raw = await fetch_datto_diagnostics(alertuid)
@@ -170,6 +191,12 @@ async def explain_datto_alert_ingest(db: Session, alertuid: str, list_item: dict
         out["detail"] = "no_device_hostname"
         return out
 
+    if is_file_backup_server_hostname(hostname):
+        out["outcome"] = "skipped"
+        out["detail"] = "skipped_file_server_hostname"
+        return out
+
+    out["would_be_citrix_host"] = is_citrix_hostname(hostname)
     out["outcome"] = "would_ingest"
     out["detail"] = None
     return out
@@ -216,6 +243,7 @@ async def _sync_alerts_from_datto_impl(trace_limit: int = 0) -> dict:
                 "skipped_before_cutoff": 0,
                 "skipped_list_before_cutoff": 0,
                 "skipped_missing_alert_timestamp": 0,
+                "skipped_file_server_hostname": 0,
                 "errors": [],
                 "sites": [],
                 "max_pages_per_state": max_pages,
@@ -229,6 +257,7 @@ async def _sync_alerts_from_datto_impl(trace_limit: int = 0) -> dict:
         skipped_before_cutoff = 0
         skipped_list_before_cutoff = 0
         skipped_missing_timestamp = 0
+        skipped_file_server = 0
         errors: list[dict] = []
         site_summaries: list[dict] = []
         cutoff = get_ingest_cutoff_et_naive()
@@ -248,6 +277,7 @@ async def _sync_alerts_from_datto_impl(trace_limit: int = 0) -> dict:
                 "resolved": 0,
                 "uids_seen": 0,
                 "skipped_list_before_cutoff": 0,
+                "skipped_file_server_at_list": 0,
             }
             uids_to_process: list[str] = []
             uid_to_list_item: dict[str, dict] = {}
@@ -293,6 +323,13 @@ async def _sync_alerts_from_datto_impl(trace_limit: int = 0) -> dict:
                             int(site_entry["skipped_list_before_cutoff"]) + 1
                         )
                         continue
+                    hn_row = hostname_from_list_item(item)
+                    if hn_row and is_file_backup_server_hostname(hn_row):
+                        skipped_file_server += 1
+                        site_entry["skipped_file_server_at_list"] = (
+                            int(site_entry["skipped_file_server_at_list"]) + 1
+                        )
+                        continue
                     uid_to_list_item[uid] = item
                     uids_to_process.append(uid)
 
@@ -334,6 +371,8 @@ async def _sync_alerts_from_datto_impl(trace_limit: int = 0) -> dict:
                             skipped_before_cutoff += 1
                         elif detail == "missing_alert_timestamp":
                             skipped_missing_timestamp += 1
+                        elif detail == "skipped_file_server_hostname":
+                            skipped_file_server += 1
                         else:
                             skipped_existing += 1
                     else:
@@ -356,6 +395,7 @@ async def _sync_alerts_from_datto_impl(trace_limit: int = 0) -> dict:
             "skipped_before_cutoff": skipped_before_cutoff,
             "skipped_list_before_cutoff": skipped_list_before_cutoff,
             "skipped_missing_alert_timestamp": skipped_missing_timestamp,
+            "skipped_file_server_hostname": skipped_file_server,
             "errors": errors,
             "sites": site_summaries,
             "alerts_total_in_db_before": alerts_total_before,

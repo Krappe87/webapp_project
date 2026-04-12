@@ -39,6 +39,9 @@ async def update_client_alert_count(client_id: str, week_label: str, total_alert
     """
     Locates the client's row and the current week's column in the Excel file,
     then updates the cell with the new total.
+
+    When counting from the DB, filter to ``Alert.citrix_host.is_(True)`` so SQL/APP/general
+    infra noise is excluded from SharePoint rollups (see host_classification / ingest).
     """
     token = await get_graph_token()
     if not token:

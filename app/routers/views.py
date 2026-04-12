@@ -59,11 +59,12 @@ def read_root(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/alerts")
 def view_alerts(
-    request: Request, 
+    request: Request,
     db: Session = Depends(get_db),
     timeframe: str | None = None,
     client: str | None = None,
-    trend: str | None = None
+    trend: str | None = None,
+    host_scope: str | None = None,
 ):
     query = db.query(Alert).join(Device).options(joinedload(Alert.device))
     now = get_current_time_et()
@@ -81,10 +82,17 @@ def view_alerts(
     elif trend == 'cpu':
         query = query.filter(Alert.alert_type.ilike('%cpu%'), Alert.timestamp >= now - timedelta(hours=24))
 
+    if host_scope == "citrix":
+        query = query.filter(Alert.citrix_host.is_(True))
+    elif host_scope == "non_citrix":
+        query = query.filter(Alert.citrix_host.is_(False))
+
     alerts = query.order_by(Alert.timestamp.desc()).limit(100).all()
-    
-    # Updated to return alerts.html
-    return templates.TemplateResponse("alerts.html", {"request": request, "alerts": alerts})
+
+    return templates.TemplateResponse(
+        "alerts.html",
+        {"request": request, "alerts": alerts, "host_scope": host_scope or "all"},
+    )
 
 @router.get("/report")
 async def report_page(request: Request):

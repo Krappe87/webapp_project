@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
@@ -25,7 +25,9 @@ class Alert(Base):
     device_hostname = Column(String, ForeignKey('devices.hostname'))
     alert_type = Column(String)
     alert_category = Column(String)
-    diagnostic_data = Column(JSONB) 
+    diagnostic_data = Column(JSONB)
+    # True when hostname matches Citrix/session-host markers (S##, XA#); SharePoint rollups use this.
+    citrix_host = Column(Boolean, nullable=False, default=False)
     timestamp = Column(DateTime, default=get_current_time_et)
     status = Column(String, default='Open')
     device = relationship("Device", back_populates="alerts")

@@ -450,7 +450,18 @@ def reduce_datto_payload_for_storage(raw: dict | None, list_item: dict | None = 
     }
 
 
-def shape_alert_from_datto(diagnostic_data: dict | None, alert_uid: str, device_hostname: str, client_id: str | None, alert_type: str | None, alert_category: str | None, status: str, timestamp: datetime | None) -> dict:
+def shape_alert_from_datto(
+    diagnostic_data: dict | None,
+    alert_uid: str,
+    device_hostname: str,
+    client_id: str | None,
+    alert_type: str | None,
+    alert_category: str | None,
+    status: str,
+    timestamp: datetime | None,
+    *,
+    citrix_host: bool = False,
+) -> dict:
     """Build API response from DB alert and stored Datto diagnostic JSON."""
     d = diagnostic_data or {}
     return {
@@ -470,6 +481,7 @@ def shape_alert_from_datto(diagnostic_data: dict | None, alert_uid: str, device_
         "alert_percent": d.get("alert_percent"),
         "alert_category": alert_category,
         "status": status,
+        "citrix_host": bool(citrix_host),
     }
 
 

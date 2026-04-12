@@ -11,6 +11,11 @@ from app.services.datto import (
     effective_alert_context,
 )
 from app.services.alert_ingest import SYNC_SITE_ALERT_STATE_ORDER, explain_datto_alert_ingest
+from app.services.host_classification import (
+    hostname_from_list_item,
+    is_file_backup_server_hostname,
+    is_citrix_hostname,
+)
 from app.services.ingest_cutoff import (
     get_ingest_cutoff_et_naive,
     alert_timestamp_from_list_item,
@@ -69,6 +74,11 @@ async def run_ingest_parse_preview(
         ),
         "states": {},
         "merged_page0_queue": [],
+        "host_classification": (
+            "CET-FILE-* hostnames are never ingested. "
+            "Citrix-style hosts: hostname matches XA+digits or S + two digits (S16…S99), "
+            "so new labels like S25 match without config changes."
+        ),
     }
 
     state_pages: dict[str, dict] = {}
@@ -105,6 +115,7 @@ async def run_ingest_parse_preview(
             lst_ts = alert_timestamp_from_list_item(item)
             digest = _list_row_type_digest(item)
             skipped_list = lst_ts is not None and not is_on_or_after_ingest_cutoff(lst_ts)
+            hn_guess = hostname_from_list_item(item)
             sample_rows.append(
                 {
                     "alertUid": uid,
@@ -126,6 +137,9 @@ async def run_ingest_parse_preview(
                         else None
                     ),
                     **digest,
+                    "list_hostname_guess": hn_guess,
+                    "would_skip_file_server": bool(hn_guess and is_file_backup_server_hostname(hn_guess)),
+                    "would_be_citrix_host_from_hostname": bool(hn_guess and is_citrix_hostname(hn_guess)),
                     "already_in_db": bool(uid and uid in existing_set),
                 }
             )
@@ -154,6 +168,9 @@ async def run_ingest_parse_preview(
                 continue
             lst_ts = alert_timestamp_from_list_item(item)
             if lst_ts is not None and not is_on_or_after_ingest_cutoff(lst_ts):
+                continue
+            hn_row = hostname_from_list_item(item)
+            if hn_row and is_file_backup_server_hostname(hn_row):
                 continue
             uid_to_list_item[uid] = item
             uids_to_process.append(uid)

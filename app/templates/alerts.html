@@ -4,12 +4,22 @@
 <h2 class="page-header">Alerts</h2>
 <p class="text-muted">Viewing alerts. Mark as resolved when handled.</p>
 
+<p class="small text-muted mb-2">
+    <strong>Server scope:</strong>
+    Citrix-style hosts match <code>S##</code> (e.g. S19, S25) or <code>XA#</code> in the hostname; others are SQL/APP/general infra.
+</p>
+<div class="btn-group btn-group-sm mb-3" role="group" aria-label="Host scope">
+    <a href="/alerts" class="btn btn-outline-secondary {% if host_scope == 'all' %}active{% endif %}">All hosts</a>
+    <a href="/alerts?host_scope=citrix" class="btn btn-outline-secondary {% if host_scope == 'citrix' %}active{% endif %}">Citrix / session hosts</a>
+    <a href="/alerts?host_scope=non_citrix" class="btn btn-outline-secondary {% if host_scope == 'non_citrix' %}active{% endif %}">Non-Citrix (SQL, APP, …)</a>
+</div>
+
 <div class="card custom-card">
     <div class="card-body table-responsive">
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Client</th><th>Device</th><th>Alert Type</th><th>Category</th><th>Time (UTC)</th><th>Status</th><th>Action</th>
+                    <th>Client</th><th>Device</th><th>Scope</th><th>Alert Type</th><th>Category</th><th>Time (EST)</th><th>Status</th><th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -17,6 +27,7 @@
                 <tr data-alertuid="{{ alert.alertuid }}">
                     <td><strong>{{ alert.device.client_id if alert.device else '—' }}</strong></td>
                     <td><code>{{ alert.device_hostname }}</code></td>
+                    <td>{% if alert.citrix_host %}<span class="badge bg-primary">Citrix</span>{% else %}<span class="badge bg-secondary">Infra</span>{% endif %}</td>
                     <td>{{ alert.alert_type or '—' }}</td>
                     <td>{{ alert.alert_category or '—' }}</td>
                     <td class="text-muted">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') if alert.timestamp else '—' }}</td>
@@ -52,8 +63,8 @@
             fetch('/api/alerts/' + encodeURIComponent(alertuid) + '/status?status=Resolved', { method: 'PATCH' })
                 .then(r => r.ok ? r.json() : Promise.reject())
                 .then(() => {
-                    row.querySelector('td:nth-child(6)').innerHTML = '<span class="badge bg-success">Resolved</span>';
-                    row.querySelector('td:nth-child(7)').innerHTML = '—';
+                    row.querySelector('td:nth-child(7)').innerHTML = '<span class="badge bg-success">Resolved</span>';
+                    row.querySelector('td:nth-child(8)').innerHTML = '—';
                 })
                 .catch(() => alert('Failed to update status.'));
         });

@@ -267,9 +267,15 @@ def get_alert(alertuid: str, db: Session = Depends(get_db)):
     if not alert:
         return JSONResponse(status_code=404, content={"detail": "Alert not found."})
     return shape_alert_from_datto(
-        alert.diagnostic_data, alert.alertuid, alert.device_hostname,
+        alert.diagnostic_data,
+        alert.alertuid,
+        alert.device_hostname,
         alert.device.client_id if alert.device else None,
-        alert.alert_type, alert.alert_category, alert.status, alert.timestamp
+        alert.alert_type,
+        alert.alert_category,
+        alert.status,
+        alert.timestamp,
+        citrix_host=getattr(alert, "citrix_host", False),
     )
 
 @router.patch("/api/alerts/{alertuid}/status")
