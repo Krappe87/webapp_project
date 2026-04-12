@@ -7,6 +7,24 @@ import time
 from typing import Any
 
 _lock = threading.Lock()
+
+
+def _fresh_ingest_counters() -> dict[str, Any]:
+    """Default ingest sub-state; keep in sync with fields updated in tick_ingest_done / start_ingest_phase."""
+    return {
+        "uids_queued": 0,
+        "uids_done": 0,
+        "ingested": 0,
+        "skipped_existing": 0,
+        "skipped_filter": 0,
+        "skipped_before_cutoff": 0,
+        "skipped_missing_timestamp": 0,
+        "skipped_file_server": 0,
+        "errors": 0,
+        "current_uid": None,
+    }
+
+
 _state: dict[str, Any] = {
     "is_running": False,
     "run_started_at_epoch": None,
@@ -26,17 +44,7 @@ _state: dict[str, Any] = {
         "resolved_truncated": False,
         "open_truncated": False,
     },
-    "ingest": {
-        "uids_queued": 0,
-        "uids_done": 0,
-        "ingested": 0,
-        "skipped_existing": 0,
-        "skipped_filter": 0,
-        "skipped_before_cutoff": 0,
-        "skipped_missing_timestamp": 0,
-        "errors": 0,
-        "current_uid": None,
-    },
+    "ingest": _fresh_ingest_counters(),
     "last_completed_run": None,
 }
 
@@ -61,18 +69,7 @@ def begin_run(*, total_sites: int, max_pages: int | None, concurrency: int) -> N
             "resolved_truncated": False,
             "open_truncated": False,
         }
-        _state["ingest"] = {
-            "uids_queued": 0,
-            "uids_done": 0,
-            "ingested": 0,
-            "skipped_existing": 0,
-            "skipped_filter": 0,
-            "skipped_before_cutoff": 0,
-            "skipped_missing_timestamp": 0,
-            "skipped_file_server": 0,
-            "errors": 0,
-            "current_uid": None,
-        }
+        _state["ingest"] = _fresh_ingest_counters()
 
 
 def set_site(site_uid: str, site_index: int) -> None:
